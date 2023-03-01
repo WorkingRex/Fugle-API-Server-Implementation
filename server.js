@@ -1,8 +1,9 @@
 const express = require('express');
 const redis = require('redis');
 const app = express();
-const router = require('./router.js');
+const expressWs = require('express-ws')(app);
 
+const router = require('./router.js');
 const port = 3000;
 
 // 創建Redis客戶端實例
@@ -23,6 +24,16 @@ client.connect()
 app.set('redisClient', client);
 
 app.use('/', router);
+
+const clientWebsocketRouter = require('./websocket/clientWebsocketRouter');
+const websocketRouter = new clientWebsocketRouter();
+// 在 express 路由中設定 WebSocket 路由
+app.ws('/streaming', (ws, req) => {
+	websocketRouter.handleConnection(ws, req);
+});
+
+const bitstampWSs = require('./websocket/bitstampWebsocket')(client, websocketRouter);
+app.set("bitstampWSs", bitstampWSs);
 
 app.listen(port, () => {
 	console.log(`Server is listening on port ${port}`);
